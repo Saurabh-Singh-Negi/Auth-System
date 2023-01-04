@@ -44,8 +44,18 @@ app.post('/register', async(req, res) => {
         })
 
         //send a token to user
+        const token = jwt.sign({
+            id: user._id, email
+        }, 'shhhhh', {expiresIn: '2h'})
+
+        user.token = token;
+        user.password = undefined;
+
+        res.status(201).json(user);
         
-        
+    } catch(error) {
+        console.log(error);
+        console.log("connection failed");
     }
 
 
