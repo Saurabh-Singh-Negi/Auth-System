@@ -1,16 +1,20 @@
+require("dotenv").config();
 require("./config/database.js").connect();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const express = require("express");
-
+var cookieParser = require('cookie-parser')
 
 //import model - user
 const User = require("./model/user");
-
-const port = 3000;
+//custom middleware
+const auth = require('./middleware/auth')
 
 const app = express();
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser())
 
 app.get('/', (req, res) => {
     res.send("<h1>Hello Auth System</h1>")
@@ -23,7 +27,7 @@ app.post('/register', async (req, res) => {
 
         //validate info
         if(!(firstname && lastname && email && password)) {
-            console.log("enter all fields");
+            res.status(401).send("enter all fields");
         }
 
         //check if email exists
@@ -70,22 +74,18 @@ app.post('/login', async (req, res) => {
         }
 
         //check if user exists
-        const user = User.findOne({email});
+        const user = await User.findOne({email})
+        
         if(user && (await bcrypt.compare(password, user.password))) {
-            //create a toke
-            const token = jwt.sign({
-                id: user._id, email
-            },
-                'shhhh',
-                {expiresIn:'2h'}
-            )
+            const token = jwt.sign({id: user._id, email}, 'shhhhh', {expiresIn: '2h'})
 
-            user.token = token;
             user.password = undefined;
+            user.token = token;
+            
 
             //cookies
             const options = {
-                expires: new Date(Date.now(3 * 24 * 60 * 60 * 1000)),
+                expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
                 httpsOnly: true
             }
 
@@ -102,6 +102,8 @@ app.post('/login', async (req, res) => {
     }
 })
 
-app.listen(port, () => {
-    console.log("listening at 3000");
+app.get('/dashboard', auth, (req, res) => {
+    res.send("Welcome to the dashboard");
 })
+
+module.exports = app;
